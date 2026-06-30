@@ -1283,22 +1283,26 @@ function ItemRack_OnEvent(event)
 			cacheInvalid = true
 			Rack.StartTimer("InvUpdate")
 		end
+
 	elseif event=="PLAYER_AURAS_CHANGED" then
 		ItemRack_BuffsChanged()
 
 	elseif event=="UPDATE_BINDINGS" then
 		update_keybindings()
 
-	elseif event=="BANKFRAME_OPENED" or event=="PLAYERBANKSLOTS_CHANGED" then
+	elseif event=="BANKFRAME_OPENED" then
 		cacheInvalid = true
-		Rack.BankOpened()
+		ItemRack.BankIsOpen = 1
+		Rack.PopulateBank()
 		Rack.StartTimer("InvUpdate")
 
 	elseif event=="BANKFRAME_CLOSED" then
 		cacheInvalid = true
-		Rack.BankClosed()
+		ItemRack.BankIsOpen = nil
+		ItemRack_MenuFrame:Hide()
+		Rack.UnpopulateBank()
 
-	elseif event=="BAG_UPDATE" then
+	elseif event=="BAG_UPDATE" or event=="PLAYERBANKSLOTS_CHANGED" then
 		cacheInvalid = true
 		Rack.PopulateBank()
 		Rack.StartTimer("InvUpdate")
@@ -5083,8 +5087,8 @@ end
 --[[ Bank support ]]
 
 function Rack.PopulateBank()
-	if not ItemRack.BankIsOpen then return end
 	Rack.UnpopulateBank()
+	if not ItemRack.BankIsOpen then return end
 	local itemLink,itemID,equipLoc
 	for i=1,table.getn(ItemRack.BankSlots) do
 		for j=1,GetContainerNumSlots(ItemRack.BankSlots[i]) do
@@ -5101,20 +5105,9 @@ function Rack.PopulateBank()
 end
 
 function Rack.UnpopulateBank()
-	for i in ItemRack.BankedItems do
+	for i in pairs(ItemRack.BankedItems) do
 		ItemRack.BankedItems[i] = nil
 	end
-end
-
-function Rack.BankOpened()
-	ItemRack.BankIsOpen = 1
-	Rack.PopulateBank()
-end
-
-function Rack.BankClosed()
-	ItemRack.BankIsOpen = nil
-	ItemRack_MenuFrame:Hide()
-	Rack.UnpopulateBank()
 end
 
 function Rack.SetHasBanked(setname)
@@ -5129,7 +5122,7 @@ function Rack.SetHasBanked(setname)
 end
 
 function Rack.FindBankedItem(name)
-	for _,i in ItemRack.BankSlots do
+	for _,i in pairs(ItemRack.BankSlots) do
 		for j=1,GetContainerNumSlots(i) do
 			if strfind(GetContainerItemLink(i,j) or "",name,1,1) then
 				return i,j
