@@ -3827,49 +3827,50 @@ end
 --this is a special function to use for mount events. returns true if player is mounted, nil otherwise
 --pass a non-nil value for v1 to do a slow/thorough scan
 function ItemRack_PlayerMounted(v1)
-  local i, buff, buffGUID
+	if type(IsMounted) == "function" then return IsMounted() end
 
-  for i = 1, 32 do
-    buff, _, buffGUID = UnitBuff("player", i)
-    if not buff then
-      break
-    end
+	local buff, buffGUID
 
-    if IRTurtle then
-      --turtle fast track GUID matching
-      if not v1 then
-        if buffGUID and ItemRack.mountGUIDs and ItemRack.mountGUIDs[buffGUID] then
-          return true
-        end
+	for i = 1, 32 do
+		buff, _, buffGUID = UnitBuff("player", i)
+		if not buff then
+			break
+		end
 
-      --if v1 is set "ItemRack_PlayerMounted(true)" in event, then tooltip search
-      else
-        Rack_TooltipScan:SetUnitBuff("player", i)
-        local str = Rack_TooltipScanTextLeft2:GetText() or ""
+		if IRTurtle then
+			--turtle fast track GUID matching
+			if not v1 then
+				if buffGUID and ItemRack.mountGUIDs and ItemRack.mountGUIDs[buffGUID] then
+					return true
+				end
 
-        if string.find(str, ItemRackText.MOUNTCHECK2)
-           or string.find(str, ItemRackText.MOUNTCHECK3) then
-          return true
-        end
-      end
+				--if v1 is set "ItemRack_PlayerMounted(true)" in event, then tooltip search
+			else
+				Rack_TooltipScan:SetUnitBuff("player", i)
+				local str = Rack_TooltipScanTextLeft2:GetText() or ""
 
-    else
-      --non-turtle :'(
-      if (problem_mounts and problem_mounts[buff]) or v1 or string.find(buff, "QirajiCrystal_") then
-        Rack_TooltipScan:SetUnitBuff("player", i)
-        local str = Rack_TooltipScanTextLeft2:GetText() or ""
-        if string.find(str, ItemRackText.MOUNTCHECK)
-           or string.find(str, ItemRackText.MOUNTCHECK2)
-           or string.find(str, ItemRackText.MOUNTCHECK3) then
-          return true
-        end
-      elseif string.find(buff, "Mount_") then
-        return true
-      end
-    end
-  end
+				if string.find(str, ItemRackText.MOUNTCHECK2)
+					or string.find(str, ItemRackText.MOUNTCHECK3) then
+					return true
+				end
+			end
+		else
+			--non-turtle :'(
+			if (problem_mounts and problem_mounts[buff]) or v1 or string.find(buff, "QirajiCrystal_") then
+				Rack_TooltipScan:SetUnitBuff("player", i)
+				local str = Rack_TooltipScanTextLeft2:GetText() or ""
+				if string.find(str, ItemRackText.MOUNTCHECK)
+					or string.find(str, ItemRackText.MOUNTCHECK2)
+					or string.find(str, ItemRackText.MOUNTCHECK3) then
+					return true
+				end
+			elseif string.find(buff, "Mount_") then
+				return true
+			end
+		end
+	end
 
-  return nil
+	return nil
 end
 
 -- returns the name of the form the player is in
