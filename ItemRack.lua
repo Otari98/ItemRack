@@ -4405,7 +4405,7 @@ function Rack.EquipSet(setname)
 	local bag,slot,id,swap,idx,inv,sourceEquipSlot,destEquipSlot
 	local set = Rack_User[user].Sets[setname]
 	local hasINVTOBAG, hasINVTOINV, hasBAGTOINV
-	local missing = "ItemRack could not find: "
+	local missing
 	local invStart,invEnd = 1,19 -- changes to 16,18 if in combat
 
 	if not set then
@@ -4511,18 +4511,20 @@ function Rack.EquipSet(setname)
 						end
 						hasBAGTOINV = 1
 					else -- couldn't find it
-						missing = missing..tostring(swap.desiredName)..", "
+						if not missing then missing = {} end
+						table.insert(missing, tostring(swap.desiredName))
 						swap.needsSwap = nil
 					end
 				end
 			end
 		elseif set[i] and set[i].name then -- item has no id yet, not seen since conversion
-			missing = missing..tostring(set[i].name)..", "
+			if not missing then missing = {} end
+			table.insert(missing, tostring(set[i].name))
 		end
 	end
 
-	if missing~="ItemRack could not find: " then
-		DEFAULT_CHAT_FRAME:AddMessage(string.gsub(missing,", $",""))
+	if missing then
+		DEFAULT_CHAT_FRAME:AddMessage("ItemRack could not find: "..table.concat(missing, ", "))
 	end
 
 	-- at this stage, Rack.SwapList[0]-[19] is populated
