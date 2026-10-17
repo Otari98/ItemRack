@@ -230,7 +230,7 @@ ItemRack.Indexes = {
 -- "add" or "remove" a frame from UISpecialFrames
 local function make_escable(frame,add)
 	local found
-	for i in UISpecialFrames do
+	for i in pairs(UISpecialFrames) do
 		if UISpecialFrames[i]==frame then
 			found = i
 		end
@@ -674,7 +674,7 @@ function ItemRack_BuildMenu(invslot,relativeTo)
 		idx = 1
 		-- this is a menu for sets
 		-- go through sets and gather them into .BaggedItems
-		for i in Rack_User[user].Sets do
+		for i in pairs(Rack_User[user].Sets) do
 			if not string.find(i,"^ItemRack") and not string.find(i,"^Rack-") and (not Rack_User[user].Sets[i].hide or IsAltKeyDown()) then
 				populate_baggeditems(idx,nil,nil,i,Rack_User[user].Sets[i].icon)
 				idx = idx + 1
@@ -1230,9 +1230,9 @@ local function initialize_events(v1)
 	if v1 then
 		ItemRack_Events = {}
 		-- go through and remove all old items from sets
-		for i in Rack_User do
+		for i in pairs(Rack_User) do
 			if Rack_User[i].Sets then
-				for j in Rack_User[i].Sets do
+				for j in pairs(Rack_User[i].Sets) do
 					for k=0,19 do
 						if Rack_User[i].Sets[j][k] then
 							Rack_User[i].Sets[j][k].old = nil
@@ -1925,10 +1925,10 @@ function ItemRack_Menu_OnClick(arg1)
 			end
 		elseif not ItemRack.BaggedItems[id].bag then
 			-- empty slot, do nothing
-		elseif ItemRack_Users[user].Ignore[ItemRack.BaggedItems[id].name] then
-			ItemRack_Users[user].Ignore[ItemRack.BaggedItems[id].name] = nil
+		elseif ItemRack_Users[user].Ignore[name] then
+			ItemRack_Users[user].Ignore[name] = nil
 		else
-			ItemRack_Users[user].Ignore[ItemRack.BaggedItems[id].name] = 1
+			ItemRack_Users[user].Ignore[name] = 1
 		end
 		ItemRack_BuildMenu(ItemRack.InvOpen,ItemRack.MenuDockedTo)
 
@@ -1938,12 +1938,12 @@ function ItemRack_Menu_OnClick(arg1)
 
 	elseif ItemRack.InvOpen==20 then
 		-- if selecting a set menu item
-		if ItemRack.BaggedItems[id].name then
+		if name then
 			if (not UnitAffectingCombat("player") and not Rack.IsPlayerReallyDead()) and (IsShiftKeyDown() or ItemRack_Settings.AutoToggle=="ON") then
 				-- toggle set if shift key is down or AutoToggle on
-				ItemRack_ToggleSet(ItemRack.BaggedItems[id].name)
+				ItemRack_ToggleSet(name)
 			else -- otherwise equip it
-				ItemRack_EquipSet(ItemRack.BaggedItems[id].name)
+				ItemRack_EquipSet(name)
 			end
 			ItemRack_MenuFrame:Hide()
 			Rack.StartTimer("InvUpdate",1) -- extra long wait, force an update, set may not swap
@@ -1951,7 +1951,7 @@ function ItemRack_Menu_OnClick(arg1)
 
 	elseif (UnitAffectingCombat("player") and not ItemRack.Indexes[ItemRack.InvOpen].swappable) or Rack.IsPlayerReallyDead() then
 		-- if selecting a menu item while dead
-		if ItemRack.BaggedItems[id].name=="(empty)" then
+		if name=="(empty)" then
 			Rack.AddToCombatQueue(ItemRack.InvOpen,0)
 		else
 			local _,itemID = Rack.GetItemInfo(ItemRack.BaggedItems[id].bag,ItemRack.BaggedItems[id].slot)
@@ -2818,7 +2818,7 @@ function ItemRack_Sets_Build_Dropdown()
 
 	ItemRack.SetsList = ItemRack.SetsList or {}
 
-	for i in Rack_User[user].Sets do
+	for i in pairs(Rack_User[user].Sets) do
 		if not string.find(i,"^ItemRack-") and not string.find(i,"^Rack-") then -- skip special sets (ItemRack-Queue and ItemRack-Normal)
 			count = 0
 			ItemRack.SetsList[idx] = ItemRack.SetsList[idx] or {}
@@ -2971,7 +2971,7 @@ local function get_free_binding()
 
 	for i=1,ItemRackText.MaxKeyBindings do
 		found = false
-		for j in Rack_User[user].Sets do
+		for j in pairs(Rack_User[user].Sets) do
 			if Rack_User[user].Sets[j].keyindex == i then
 				found = true
 			end
@@ -3022,7 +3022,7 @@ function ItemRack_AgreeOnKeyBindings()
 	if ItemRack.KeyBindingsSettled then
 		-- don't do this at startup, wait until we had a chance to initialize this player's keys
 
-		for i in Rack_User[user].Sets do
+		for i in pairs(Rack_User[user].Sets) do
 			Rack_User[user].Sets[i].key = nil
 			Rack_User[user].Sets[i].keyindex = nil
 		end
@@ -3066,7 +3066,7 @@ function ItemRack_UseSetBinding(v1)
 	local setname
 
 	-- look for sets with this key index
-	for i in Rack_User[user].Sets do
+	for i in pairs(Rack_User[user].Sets) do
 		if Rack_User[user].Sets[i].keyindex == v1 then
 			setname = i
 		end
@@ -3081,7 +3081,7 @@ end
 local function bind_key_to_set(key,setname)
 
 	-- check if another set has this key binding
-	for i in Rack_User[user].Sets do
+	for i in pairs(Rack_User[user].Sets) do
 		if Rack_User[user].Sets[i].key == key then
 			unbind_keys(i) -- remove the other set's key binding if so
 			Rack_User[user].Sets[i].keyindex = nil -- remove them from our table
@@ -3168,7 +3168,7 @@ function ItemRack_InitializeKeyBindings()
 
 	unbind_keys() -- remove all 10 keybindings (from previous users perhaps)
 
-	for i in Rack_User[user].Sets do
+	for i in pairs(Rack_User[user].Sets) do
 		keyidx = Rack_User[user].Sets[i].keyindex
 		if keyidx then
 			_G["BINDING_NAME_EQUIPSET"..keyidx] = string.format(ItemRackText.BINDINGFORMAT,i)
@@ -4151,7 +4151,7 @@ end
 function Rack.ClearLockList(bag,slot)
 	if not bag then
 		for i=-2,10 do
-			for j in Rack.LockList[i] do
+			for j in pairs(Rack.LockList[i]) do
 				Rack.LockList[i][j] = nil
 			end
 		end
@@ -4758,7 +4758,7 @@ function Rack.PrintQueue()
 	txt = txt.."}"
 	debug(txt)
 	txt = "Rack.SwapQueue = { "
-	for i in Rack.SwapQueue do
+	for i in pairs(Rack.SwapQueue) do
 		txt = txt.."["..i.."]= { direction="..tostring(Rack.SwapQueue[i].direction)..", "
 		txt = txt.."setname="..tostring(Rack.SwapQueue[i].setname)..", "
 		for j=0,19 do
@@ -4947,7 +4947,7 @@ end
 
 function Rack.ClearStoppedTimers()
 	local stuffLeft
-	for i in Rack.TimerPool do
+	for i in pairs(Rack.TimerPool) do
 		stuffLeft = stuffLeft or Rack.TimerPool[i].enabled
 	end
 	if not stuffLeft then
@@ -4968,7 +4968,7 @@ function Rack.OnUpdate()
 	local clock,stopped
 	local elapse = tonumber(arg1) or 0.1
 
-	for i in Rack.TimerPool do
+	for i in pairs(Rack.TimerPool) do
 		clock = Rack.TimerPool[i]
 		if clock.enabled then
 			clock.timer = clock.timer - elapse
