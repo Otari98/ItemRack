@@ -445,8 +445,7 @@ end
 -- returns true if the player can wear this item (no red text on its tooltip)
 -- separated from get_item_info because tooltip scanning should be done only at utmost need
 local function player_can_wear(bag,slot,invslot)
-
-	local found,txt,itemType = false
+	local canWear = true
 
 	for i=2,15 do
 		-- ClearLines doesn't remove colors, manually remove them
@@ -456,19 +455,19 @@ local function player_can_wear(bag,slot,invslot)
 	Rack_TooltipScan:SetBagItem(bag,slot)
 
 	for i=2,15 do
-		txt = _G["Rack_TooltipScanTextLeft"..i]:GetText()
+		local txt = _G["Rack_TooltipScanTextLeft"..i]:GetText()
 		-- if either left or right text is red and this isn't a Durability x/x line, this item can't be worn
 		if (is_red("Left"..i) or is_red("Right"..i)) and not string.find(txt,durability_pattern) and not string.find(txt,"^Requires") then
-			found = true
+			canWear = false
 		end
 	end
 
-	_,_,_,itemType = Rack.GetItemInfo(bag,slot)
+	local _,_,_,itemType = Rack.GetItemInfo(bag,slot)
 	if itemType=="INVTYPE_WEAPON" and invslot==17 and not ItemRack.CanWearOneHandOffHand then
-		found = true
+		canWear = false
 	end
 
-	return not found
+	return canWear
 end
 
 -- the old central info gatherer, now a wrapper to Rack.GetItemInfo
@@ -1874,7 +1873,7 @@ function ItemRack_Menu_OnClick(arg1)
 
 	if SpellIsTargeting() or CursorHasItem() then return end -- prohibit swaps while in spell target/disenchant mode
 
-	if ItemRack.BankIsOpen then
+	if ItemRack.BankIsOpen and IsControlKeyDown() then
 		if ItemRack.InvOpen~=20 then
 			if not itemID then return end
 			Rack.ClearLockList()
@@ -4164,8 +4163,9 @@ end
 -- returns inv,bag,slot of an itemID, or itemName if itemID doesn't exist
 function Rack.FindItem(itemID,itemName,passive)
 
-	local bagStart,bagEnd,id,name = 0,4
-	local inv,bag,slot
+	local bagStart, bagEnd = 0, 4
+	local inv, bag, slot, id, name
+	if ItemRack.BankIsOpen then bagStart, bagEnd = -1, 10 end
 
 	if itemID then
 
@@ -4319,17 +4319,15 @@ end
 function Rack.SortQueue()
 
 	if table.getn(Rack.SwapQueueOrder)>1 then
-		local found,temp = 1
+		local found = true
 		local queue = Rack.SwapQueueOrder
 		-- simple shell sort (this is a small, 5-6 max typically) table of indexes that must remain in order otherwise
 		while found do
-			found = nil
+			found = false
 			for i=1,(table.getn(queue)-1) do
 				if Rack.SwapQueue[queue[i]].direction=="NEWSET" and Rack.SwapQueue[queue[i+1]].direction~="NEWSET" then
-					temp = queue[i]
-					queue[i] = queue[i+1]
-					queue[i+1] = temp
-					found = 1
+					queue[i], queue[i+1] = queue[i+1], queue[i]
+					found = true
 				end
 			end
 		end
@@ -4401,7 +4399,7 @@ end
 ]]
 
 function Rack.EquipSet(setname)
-
+	-- Rack.PrintSet(setname)
 	local bag,slot,id,swap,idx,inv,sourceEquipSlot,destEquipSlot
 	local set = Rack_User[user].Sets[setname]
 	local hasINVTOBAG, hasINVTOINV, hasBAGTOINV
@@ -4592,13 +4590,13 @@ function Rack.EquipSet(setname)
 		end
 	end
 
-	Rack_User[user].Sets[setname].oldsetname = Rack_User[user].CurrentSet
+	set.oldsetname = Rack_User[user].CurrentSet
 
-	if Rack_User[user].Sets[setname].showhelm then
-		ShowHelm(Rack_User[user].Sets[setname].showhelm)
+	if set.showhelm then
+		ShowHelm(set.showhelm)
 	end
-	if Rack_User[user].Sets[setname].showcloak then
-		ShowCloak(Rack_User[user].Sets[setname].showcloak)
+	if set.showcloak then
+		ShowCloak(set.showcloak)
 	end
 
 	-- at last, perform the swaps by iterating over the queue
@@ -4629,7 +4627,7 @@ end
 -- swaps only happen one direction at a time: INVTOBAG->INVTOINV->BAGTOINV
 -- complex swaps can require running this a few times
 function Rack.IterateSwapQueue()
-
+	-- Rack.PrintQueue()
 	if table.getn(Rack.SwapQueueOrder)<1 then
 		-- if queue is empty, unregister and leave
 		Rack.SetSwapping = nil
@@ -4782,29 +4780,21 @@ end
 
 -- returns true if anything is locked
 function Rack.AnyLocked()
+	for i = 0, 19 do
+		if IsInventoryItemLocked(i) then return true end
+	end
 
-	local locked,isLocked
+	local bagStart, bagEnd = 0, 4
+	if ItemRack.BankIsOpen then bagStart, bagEnd = -1, 10 end
 
-	for i=0,19 do
-		if IsInventoryItemLocked(i) then
-			locked = 1
-			break
+	for bag = bagStart, bagEnd do
+		for slot = 1, GetContainerNumSlots(bag) do
+			local _, _, isLocked = GetContainerItemInfo(bag, slot)
+			if isLocked then return true end
 		end
 	end
 
-	if not locked then
-		for i=0,4 do
-			for j=1,GetContainerNumSlots(i) do
-				_,_,isLocked = GetContainerItemInfo(i,j)
-				if isLocked then
-					locked = 1
-					i,j=99,99
-				end
-			end
-		end
-	end
-
-	return locked
+	return false
 end
 
 -- when an iteration begins, on each ITEM_LOCK_CHANGED check if the swaps are done
@@ -4832,13 +4822,12 @@ end
 
 function Rack.IsPlayerReallyDead()
 	local dead = UnitIsDeadOrGhost("player")
-	local _,class = UnitClass("player")
-	if class~="HUNTER" then
-		return dead
-	end
-	for i=1,24 do
-		if UnitBuff("player",i)=="Interface\\Icons\\Ability_Rogue_FeignDeath" then
-			dead = nil -- player is just FD, not really dead
+	local _, class = UnitClass("player")
+	if dead and class == "HUNTER" then
+		for i = 1, 32 do
+			if UnitBuff("player", i) == "Interface\\Icons\\Ability_Rogue_FeignDeath" then
+				return nil -- player is just FD, not really dead
+			end
 		end
 	end
 	return dead
